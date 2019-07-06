@@ -12,12 +12,6 @@
 
 using namespace std;
 
-struct modifiedCell {
-	int newValue;
-	int row;
-	int column;
-};
-
 /**The wind is encoded w.r.t it's direction as:
     North West (NW) = 0
     North(N) = 1
@@ -45,16 +39,13 @@ const float lighting = 0.00000002;
 const float growth = 0.002;
 
 /**Size of the forest**/
-const int cellSize = 5;
-const int width = 160;
-const int height =160;
-int currentGeneration[width][height];
+const int cellSize = 3;
+const int width = 400;
+const int height =400;
 
 int indexDirectionWind = 3;
 string directionWind = wind[indexDirectionWind];
 int currentIteration = 0;
-
-
 
 map <string, vector<pair<int, int> > > windNeighbourds = {
 	{wind[0], { {0, 1}, {1, 1}, {1, 0} } },
@@ -116,25 +107,22 @@ void printMatrix(int** m) {
 	}
 }
 
-void transitionFunction(int processCurrentGeneration[],int processNextGeneration[],int neighbourdDataOfLeftProcess[],int neighbourdDataOfRightProcess[], int size, int myRank, int numberOfProcess, vector<modifiedCell> &changedValues) {
+void transitionFunction(int processCurrentGeneration[],int processNextGeneration[],int neighbourdDataOfLeftProcess[],int neighbourdDataOfRightProcess[], int size) {
 
 	for (int i = 0; i < size; i++) {
 		int curr_row = i / height;
 		int curr_col = i % height;
-		bool modified = false;
 		//Born of fuel into an empty cell
 		if(processCurrentGeneration[i] == -1) {
-			if(fuelGrowth()) {
+			if(fuelGrowth())
 				processNextGeneration[i] = fuel(rand() % 3);
-				modified = true;
-
-			}
 		}
+
 		//Fuel cell (1. Struck by lighting. 2. One of its neighbourds burn and i am in the same wind direction
 		else if(processCurrentGeneration[i] >= 0 && processCurrentGeneration[i] <= 2) {
 			if(struckByLightning()) {
 				processNextGeneration[i] = burn[processCurrentGeneration[i]];
-				modified = true;
+				//cout<<"HIT " << endl;
 			}
 			else{
 				vector<pair<int,int> > neighbourds = windNeighbourds.at(wind[indexDirectionWind]);
@@ -152,7 +140,6 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 					if(Nrow < 0) {                                                                                                                                                //dati processo a sinistra
 						if(neighbourdDataOfRightProcess[Ncolumn] >= burn[0]) {
 							processNextGeneration[i] = burn[processCurrentGeneration[i]];
-							modified = true;
 							break;
 						}
 					}
@@ -160,42 +147,26 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 					else if(Nrow >= size / height) {                                                                                                                                                 //dati processo a destra
 						if(neighbourdDataOfLeftProcess[Ncolumn] >= burn[0]) {
 							processNextGeneration[i] = burn[processCurrentGeneration[i]];
-							modified = true;
 							break;
 						}
 					}
 
 					else{
-						if(processCurrentGeneration[(height * Nrow) + (Ncolumn)] >= burn[0]) {
-							processNextGeneration[i] = burn[processCurrentGeneration[i]];
-							modified = true;
-							break;
-						}
+							if(processCurrentGeneration[(height * Nrow) + (Ncolumn)] >= burn[0]) {
+								processNextGeneration[i] = burn[processCurrentGeneration[i]];
+								break;
+							}
 					}
 				}
 			}
 		}
 		else {
-
-			if(processCurrentGeneration[i] < burn[2]) {
+			if(processCurrentGeneration[i] < burn[2])
 				processNextGeneration[i] = processCurrentGeneration[i] + burn[0];
-			}
-
-			else{
+			else
 				processNextGeneration[i] = -1;
-			}
 		}
 
-		if(modified && myRank != 0)
-		{
-			modifiedCell changed;
-			changed.row = curr_row + (myRank * (width / numberOfProcess));
-			changed.column = curr_col;
-			changed.newValue = processNextGeneration[i];
-			changedValues.push_back(changed);
-		}
-		if(myRank == 0 && modified)
-			currentGeneration[curr_row + (myRank * (width / numberOfProcess))][curr_col] = processNextGeneration[i];
 	}
 }
 
@@ -226,7 +197,7 @@ int main(int argc, char** argv) {
 	ALLEGRO_COLOR color;
 
 
-
+	int currentGeneration[width][height];
 	for(int i = 0; i < width; i++)
 		for(int j = 0; j < height; j++)
 			currentGeneration[i][j] = -1;
@@ -243,22 +214,20 @@ int main(int argc, char** argv) {
 	const int BLOCKROWS = width/numberOfProcess;                             /* number of rows in _block_ */
 	const int BLOCKCOLS = height;                             /* number of cols in _block_ */
 
-	if(myRank == 0) {
-		queue = al_create_event_queue();
-		disp = al_create_display(width*cellSize, height*cellSize);
+    if(myRank == 0) {
+        queue = al_create_event_queue();
+        disp = al_create_display(width*cellSize, height*cellSize);
 
-		al_register_event_source(queue, al_get_keyboard_event_source());
-		al_register_event_source(queue, al_get_display_event_source(disp));
-		al_init_primitives_addon();
-	}
+        al_register_event_source(queue, al_get_keyboard_event_source());
+        al_register_event_source(queue, al_get_display_event_source(disp));
+        al_init_primitives_addon();
+    }
 
 	int processCurrentGeneration[BLOCKROWS*BLOCKCOLS];
 	int processNextGeneration[BLOCKROWS*BLOCKCOLS];
-
-	for(int i = 0; i < BLOCKROWS*BLOCKCOLS; i++) {
+	for(int i = 0; i < BLOCKROWS*BLOCKCOLS; i++)
 		processNextGeneration[i] = -1;
-		processCurrentGeneration[i] = -1;
-	}
+
 	MPI_Datatype rowtype;
 	MPI_Type_contiguous(BLOCKROWS*BLOCKCOLS, MPI_INT, &rowtype);
 	MPI_Type_commit(&rowtype);
@@ -267,16 +236,10 @@ int main(int argc, char** argv) {
 	MPI_Type_contiguous(BLOCKCOLS, MPI_INT, &singleNeighbourdRowType);
 	MPI_Type_commit(&singleNeighbourdRowType);
 
-	MPI_Datatype cell;
-	MPI_Datatype type[3] = {MPI_INT, MPI_INT, MPI_INT};
-	int blocklen[3] = {1, 1, 1};
-	MPI_Aint displ[3] = {0, 1 * sizeof(int), 2 * sizeof(int)};
-	MPI_Type_struct( 3, blocklen, displ, type, &cell);
-	MPI_Type_commit(&cell);
-
-	MPI_Status status;
 	int neighbourdDataOfRightProcess[BLOCKCOLS];
 	int neighbourdDataOfLeftProcess[BLOCKCOLS];
+
+	MPI_Status status;
 
 	MPI_Comm linearArrayTopology;
 	int dimensions = 2, left, right, reorder = false;
@@ -287,10 +250,15 @@ int main(int argc, char** argv) {
 	periods[0] = 1, periods[1] = 0;
 
 	MPI_Cart_create(MPI_COMM_WORLD, dimensions, topologyDimensions, periods, reorder, &linearArrayTopology);
+
+	MPI_Scatter(&currentGeneration, 1, rowtype, processCurrentGeneration, BLOCKROWS*BLOCKCOLS, MPI_INT, 0, linearArrayTopology);
+
+
 	MPI_Cart_shift(linearArrayTopology, 0, 1, &left, &right);
 	MPI_Cart_coords(linearArrayTopology, myRank, dimensions, coords);
 
-	while(currentIteration < 1000)
+
+	while(currentIteration < 10000)
 	{
 		MPI_Send(&processCurrentGeneration, 1, singleNeighbourdRowType, left, 0, linearArrayTopology);
 		MPI_Send(&processCurrentGeneration[(BLOCKROWS*BLOCKCOLS)-BLOCKCOLS], 1, singleNeighbourdRowType, right, 0, linearArrayTopology);
@@ -298,79 +266,51 @@ int main(int argc, char** argv) {
 		MPI_Recv(&neighbourdDataOfLeftProcess, BLOCKCOLS, MPI_INT, left, 0, linearArrayTopology, &status);
 		MPI_Recv(&neighbourdDataOfRightProcess, BLOCKCOLS, MPI_INT, right, 0, linearArrayTopology, &status);
 
-		vector<modifiedCell> changedValues;
-		transitionFunction(processCurrentGeneration, processNextGeneration, neighbourdDataOfLeftProcess, neighbourdDataOfRightProcess, BLOCKROWS*BLOCKCOLS, myRank, numberOfProcess, changedValues);
+		transitionFunction(processCurrentGeneration, processNextGeneration, neighbourdDataOfLeftProcess, neighbourdDataOfRightProcess, BLOCKROWS*BLOCKCOLS);
 		copyMatrix(processCurrentGeneration, processNextGeneration, BLOCKROWS*BLOCKCOLS);
 
+		MPI_Gather(&processCurrentGeneration, 1, rowtype, currentGeneration, 1, rowtype, 0, linearArrayTopology);
 
-		int dim = changedValues.size();
-		if(myRank != 0) {
+        if(myRank == 0)
+        {
+                al_peek_next_event(queue, &event);
 
-			MPI_Send(&dim, 1, MPI_INT, 0, 98, linearArrayTopology);
-			MPI_Send(&changedValues[0], dim, cell, 0, 99, linearArrayTopology);
-		}
-		if(myRank == 0) {
-			//	int dim;
-			for(int i = 1; i < numberOfProcess; i++) {
-				MPI_Recv(&dim, 1, MPI_INT, i, 98, linearArrayTopology, &status);
-				modifiedCell mod[dim];
-				MPI_Recv(&mod, dim, cell, i, 99, linearArrayTopology, &status);
+                if((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)){
+									MPI_Abort(linearArrayTopology, 1);
+								}
 
-				for(int j = 0; j < dim; j++) {
-					currentGeneration[mod[j].row][mod[j].column] = mod[j].newValue;
-				}
-			}
-			al_peek_next_event(queue, &event);
-
-			if((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)) {
-				MPI_Abort(linearArrayTopology, 1);
-			}
-
-			al_clear_to_color(al_map_rgb(0, 0, 0));
+								al_clear_to_color(al_map_rgb(0, 0, 0));
 
 
-			for(int i = 0; i < width; i++) {
-				for(int j = 0; j < height; j++) {
-					if(currentGeneration[i][j] == -1)
-						color = al_map_rgb(0, 0, 0);
-					else if(currentGeneration[i][j] >= burn[0]) {
-						color = al_map_rgb(255, 255 - currentGeneration[i][j], 0);
+            for(int i = 0; i < width; i++) {
+                for(int j = 0; j < height; j++) {
+                   if(currentGeneration[i][j] == -1)
+                        color = al_map_rgb(0, 0, 0);
+                    else if(currentGeneration[i][j] >= burn[0])
+                        color = al_map_rgb(255, 255 - currentGeneration[i][j], 0);
+                    else if(currentGeneration[i][j] == fuel(0))
+                        color = al_map_rgb(0,102, 0);
+                    else if(currentGeneration[i][j] == fuel(1))
+                        color = al_map_rgb(0, 153, 0);
+                    else if(currentGeneration[i][j] == fuel(2))
+                        color = al_map_rgb(0, 255, 0);
 
-						if(currentGeneration[i][j]<burn[2])
-							currentGeneration[i][j]+=burn[0];
-						else
-							currentGeneration[i][j] = -1;
-					}
-					else if(currentGeneration[i][j] == fuel(0))
-						color = al_map_rgb(0,102, 0);
-					else if(currentGeneration[i][j] == fuel(1))
-						color = al_map_rgb(0, 153, 0);
-					else if(currentGeneration[i][j] == fuel(2))
-						color = al_map_rgb(0, 255, 0);
-
-					al_draw_filled_rectangle(i*cellSize, j*cellSize, i*cellSize + cellSize, j*cellSize + cellSize, color);
-				}
-			}
-			al_flip_display();
-		}
-		//	if(currentIteration % 50 == 0)
+                    al_draw_filled_rectangle(i*cellSize, j*cellSize, i*cellSize + cellSize, j*cellSize + cellSize, color);
+                }
+            }
+            al_flip_display();
+        }
+	//	if(currentIteration % 50 == 0)
 		//	changeWindDirection();
 		//MPI_Barrier(linearArrayTopology);
-
-
 		currentIteration++;
-
-
 	}
 
-	if(myRank == 0) {
-		al_destroy_display(disp);
-		al_destroy_event_queue(queue);
-	}
+    if(myRank == 0) {
+        al_destroy_display(disp);
+        al_destroy_event_queue(queue);
+    }
 
-	MPI_Type_free(&rowtype);
-	MPI_Type_free(&singleNeighbourdRowType);
-	MPI_Type_free(&cell);
 	MPI_Finalize();
 
 	return 0;
