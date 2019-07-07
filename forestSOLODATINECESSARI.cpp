@@ -163,35 +163,37 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 			}
 		}
 
-		if(modified)
+		if(modified && myRank != 0)
 		{
 			modifiedCellOfCurrentGeneration changed;
 			changed.row = curr_row + (myRank * (width / numberOfProcess));
 			changed.column = curr_col;
 			changed.newValue = processNextGeneration[i];
 			changedValues.push_back(changed);
-
-
-			if(modified && curr_row == 0)
-			{
-				modifiedValueOfNeighbourdProcess changed;
-				changed.position = curr_col;
-				changed.newValue = processNextGeneration[i];
-				leftProcessValueChangedToSend.push_back(changed);
-			}
-
-			if(modified && curr_row == (width/numberOfProcess) - 1)
-			{
-				modifiedValueOfNeighbourdProcess changed;
-				changed.position = curr_col;
-				changed.newValue = processNextGeneration[i];
-				rightProcessValueChangedToSend.push_back(changed);
-			}
 		}
+
+		if(modified && curr_row == 0)
+		{
+			modifiedValueOfNeighbourdProcess changed;
+			changed.position = curr_col;
+			changed.newValue = processNextGeneration[i];
+			leftProcessValueChangedToSend.push_back(changed);
+		}
+
+		if(modified && curr_row == (width/numberOfProcess) - 1)
+		{
+			modifiedValueOfNeighbourdProcess changed;
+			changed.position = curr_col;
+			changed.newValue = processNextGeneration[i];
+			rightProcessValueChangedToSend.push_back(changed);
+		}
+
+		if(myRank == 0 && modified)
+			currentGeneration[curr_row + (myRank * (width / numberOfProcess))][curr_col] = processNextGeneration[i];
 	}
 
 
-	for(int i = 0; i < height; i++) {
+	for(int i = 0; i < height; i++){
 		if(neighbourdDataOfLeftProcess[i] >= burn[0] && neighbourdDataOfLeftProcess[i] < burn[2]) {
 			neighbourdDataOfLeftProcess[i] += burn[0];
 		}
@@ -248,12 +250,8 @@ int main(int argc, char** argv) {
 
 	srand(time(NULL) + myRank);
 
-	const int BLOCKROWS = (width/(numberOfProcess - 1));                              /* number of rows in _block_ */
+	const int BLOCKROWS = (width/numberOfProcess);                             /* number of rows in _block_ */
 	const int BLOCKCOLS = height;                             /* number of cols in _block_ */
-	int processCurrentGeneration[BLOCKROWS*BLOCKCOLS];
-	int processNextGeneration[BLOCKROWS*BLOCKCOLS];
-	int neighbourdDataOfRightProcess[BLOCKCOLS];
-	int neighbourdDataOfLeftProcess[BLOCKCOLS];
 
 	if(myRank == 0) {
 		queue = al_create_event_queue();
@@ -264,18 +262,20 @@ int main(int argc, char** argv) {
 		al_init_primitives_addon();
 	}
 
-	if(myRank!=0) {
-		for(int i = 0; i < BLOCKROWS*BLOCKCOLS; i++) {
-			processNextGeneration[i] = -1;
-			processCurrentGeneration[i] = -1;
+	int processCurrentGeneration[BLOCKROWS*BLOCKCOLS];
+	int processNextGeneration[BLOCKROWS*BLOCKCOLS];
+	int neighbourdDataOfRightProcess[BLOCKCOLS];
+	int neighbourdDataOfLeftProcess[BLOCKCOLS];
 
-			if(i < BLOCKCOLS) {
-				neighbourdDataOfRightProcess[i] = -1;
-				neighbourdDataOfLeftProcess[i] = -1;
-			}
+	for(int i = 0; i < BLOCKROWS*BLOCKCOLS; i++) {
+		processNextGeneration[i] = -1;
+		processCurrentGeneration[i] = -1;
+
+		if(i < BLOCKCOLS) {
+			neighbourdDataOfRightProcess[i] = -1;
+			neighbourdDataOfLeftProcess[i] = -1;
 		}
 	}
-
 
 	MPI_Datatype cellOfCurrentGeneration;
 	MPI_Datatype type[3] = {MPI_INT, MPI_INT, MPI_INT};
@@ -292,36 +292,18 @@ int main(int argc, char** argv) {
 	MPI_Type_commit(&cellOfNeighbourdProcess);
 
 	MPI_Status status;
+
 	MPI_Comm linearArrayTopology;
-	bool iAmTheMaster = false;
-	if(myRank == 0) {
-		iAmTheMaster = true;
-	}
-
-	MPI_Comm comm;
-	MPI_Group origin_group, new_group;
-	MPI_Comm_group(MPI_COMM_WORLD, &origin_group);
-
-	int ex[1];
-	ex[0] = 0;
-	MPI_Group_excl(origin_group, 1, ex, &new_group);
-	MPI_Comm_create(MPI_COMM_WORLD, new_group, &comm);
-	if(!iAmTheMaster) {
-		MPI_Comm_rank(comm, &myRank);
-		MPI_Comm_size(comm, &numberOfProcess);
-	}
 	int dimensions = 2, left, right, reorder = false;
 	int periods[dimensions], topologyDimensions[dimensions], coords[dimensions];
 
 	topologyDimensions[0] = numberOfProcess;
 	topologyDimensions[1] = 1;
 	periods[0] = 1, periods[1] = 0;
-	if(!iAmTheMaster) {
-		MPI_Cart_create(comm, dimensions, topologyDimensions, periods, reorder, &linearArrayTopology);
-		MPI_Cart_shift(linearArrayTopology, 0, 1, &left, &right);
-		MPI_Cart_coords(linearArrayTopology, myRank, dimensions, coords);
-	}
 
+	MPI_Cart_create(MPI_COMM_WORLD, dimensions, topologyDimensions, periods, reorder, &linearArrayTopology);
+	MPI_Cart_shift(linearArrayTopology, 0, 1, &left, &right);
+	MPI_Cart_coords(linearArrayTopology, myRank, dimensions, coords);
 
 	while(currentIteration < 5000)
 	{
@@ -329,61 +311,51 @@ int main(int argc, char** argv) {
 		vector<modifiedValueOfNeighbourdProcess> leftProcessValueChangedToSend;
 		vector<modifiedValueOfNeighbourdProcess> rightProcessValueChangedToSend;
 
-		if(!iAmTheMaster) {
-			transitionFunction(processCurrentGeneration, processNextGeneration, neighbourdDataOfRightProcess,
-			                   neighbourdDataOfLeftProcess, BLOCKROWS*BLOCKCOLS, myRank, numberOfProcess, changedValues,
-			                   leftProcessValueChangedToSend, rightProcessValueChangedToSend );
-			copyMatrix(processCurrentGeneration, processNextGeneration, BLOCKROWS*BLOCKCOLS);
+		transitionFunction(processCurrentGeneration, processNextGeneration, neighbourdDataOfRightProcess,
+		                   neighbourdDataOfLeftProcess, BLOCKROWS*BLOCKCOLS, myRank, numberOfProcess, changedValues,
+		                   leftProcessValueChangedToSend, rightProcessValueChangedToSend );
+		copyMatrix(processCurrentGeneration, processNextGeneration, BLOCKROWS*BLOCKCOLS);
 
-			/***********************/
-			int dimleft = leftProcessValueChangedToSend.size();
-			int dimright = 0;
+		/***********************/
+		int dimleft = leftProcessValueChangedToSend.size();
+		int dimright;
+		MPI_Send(&dimleft, 1, MPI_INT, left, 94, linearArrayTopology);
+		MPI_Send(&leftProcessValueChangedToSend[0], dimleft, cellOfNeighbourdProcess, left, 95, linearArrayTopology);
 
-			MPI_Send(&leftProcessValueChangedToSend[0], dimleft, cellOfNeighbourdProcess, left, 95, linearArrayTopology);
+		MPI_Recv(&dimright, 1, MPI_INT, right, 94, linearArrayTopology, &status);
+		modifiedValueOfNeighbourdProcess mod_r[dimright];
+		MPI_Recv(&mod_r, dimright, cellOfNeighbourdProcess, right, 95, linearArrayTopology, &status);
 
-			MPI_Probe(right, 95, linearArrayTopology, &status);
-			MPI_Get_count(&status, MPI_INT, &dimright);
-			
-			modifiedValueOfNeighbourdProcess mod_r[dimright / 2];
-
-			MPI_Recv(&mod_r, dimright / 2, cellOfNeighbourdProcess, right, 95, linearArrayTopology, &status);
-
-			for(int j = 0; j < dimright / 2; j++) {
-				neighbourdDataOfRightProcess[mod_r[j].position] = mod_r[j].newValue;
-			}
-
-
-			dimright = rightProcessValueChangedToSend.size();
-			MPI_Send(&rightProcessValueChangedToSend[0], dimright, cellOfNeighbourdProcess, right, 91, linearArrayTopology);
-
-			MPI_Probe(left, 91, linearArrayTopology, &status);
-			MPI_Get_count(&status, MPI_INT, &dimleft);
-
-			modifiedValueOfNeighbourdProcess mod_l[dimleft / 2];
-			MPI_Recv(&mod_l, dimleft / 2, cellOfNeighbourdProcess, left, 91, linearArrayTopology, MPI_STATUS_IGNORE);
-
-			for(int j = 0; j < dimleft / 2; j++) {
-				neighbourdDataOfLeftProcess[mod_l[j].position] = mod_l[j].newValue;
-			}
-
+		for(int j = 0; j < dimright; j++) {
+			neighbourdDataOfRightProcess[mod_r[j].position] = mod_r[j].newValue;
 		}
 
+		dimright = rightProcessValueChangedToSend.size();
+		MPI_Send(&dimright, 1, MPI_INT, right, 94, linearArrayTopology);
+		MPI_Send(&rightProcessValueChangedToSend[0], dimright, cellOfNeighbourdProcess, right, 95, linearArrayTopology);
 
+		MPI_Recv(&dimleft, 1, MPI_INT, left, 94, linearArrayTopology, &status);
+		modifiedValueOfNeighbourdProcess mod_l[dimleft];
+		MPI_Recv(&mod_l, dimleft, cellOfNeighbourdProcess, left, 95, linearArrayTopology, &status);
+
+		for(int j = 0; j < dimleft; j++) {
+			neighbourdDataOfLeftProcess[mod_l[j].position] = mod_l[j].newValue;
+		}
+		/***********************/
 		int dim = changedValues.size();
-		if(!iAmTheMaster) {
-			MPI_Send(&changedValues[0], dim, cellOfCurrentGeneration, 0, 99, MPI_COMM_WORLD);
+		if(myRank != 0) {
+			MPI_Send(&dim, 1, MPI_INT, 0, 98, linearArrayTopology);
+			MPI_Send(&changedValues[0], dim, cellOfCurrentGeneration, 0, 99, linearArrayTopology);
 		}
 
-		if(iAmTheMaster) {
+		if(myRank == 0) {
 			//	int dim;
 			for(int i = 1; i < numberOfProcess; i++) {
-				MPI_Probe(i, 99, MPI_COMM_WORLD, &status);
-				MPI_Get_count(&status, MPI_INT, &dim);
+				MPI_Recv(&dim, 1, MPI_INT, i, 98, linearArrayTopology, &status);
+				modifiedCellOfCurrentGeneration mod[dim];
+				MPI_Recv(&mod, dim, cellOfCurrentGeneration, i, 99, linearArrayTopology, &status);
 
-				modifiedCellOfCurrentGeneration mod[dim / 3];
-				MPI_Recv(&mod, dim / 3, cellOfCurrentGeneration, i, 99, MPI_COMM_WORLD, &status);
-
-				for(int j = 0; j < dim / 3; j++) {
+				for(int j = 0; j < dim; j++) {
 					currentGeneration[mod[j].row][mod[j].column] = mod[j].newValue;
 				}
 			}
@@ -429,7 +401,7 @@ int main(int argc, char** argv) {
 
 	}
 
-	if(iAmTheMaster) {
+	if(myRank == 0) {
 		al_destroy_display(disp);
 		al_destroy_event_queue(queue);
 	}
