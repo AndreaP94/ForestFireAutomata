@@ -42,10 +42,20 @@ const int burn[3] = {20, 120, 240};
 const float lighting = 0.00000002;
 /**Probability that in an empty cell born a combustion type**/
 const float growth = 0.002;
+
+const float min_l = lighting/2;
+const float max_l = growth;
+const float range_l = max_l - min_l;
+
+const float min_g = growth/2;
+const float max_g = (growth*200);
+const float range_g = max_g - min_g;
 /**Size of the forest**/
 const int cellSize = 10;
 const int width = 160;
 const int height =160;
+
+bool enableGraphic = true;
 
 int currentGeneration[width][height];
 
@@ -64,32 +74,19 @@ map <string, vector<pair<int, int> > > windNeighbourds = {
 	{wind[7], { {-1, 1}, {0, 1}, {1, 1} } }
 };
 
+map <int, ALLEGRO_COLOR> colorToDisplay;
+
+
 bool struckByLightning() {
-	const float min = lighting/2;
-	const float max = growth;
-
-	float range = max - min;
-	float random = range * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) + min;
-
-	if(random < lighting)
-		return true;
-	return false;
+	float random = range_l * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) + min_l;
+	return random < lighting ? true : false;
 }
 bool fuelGrowth() {
-	const float min = growth/2;
-	const float max = (growth*200);
-
-	float range = max - min;
-
-	float random = range * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) + min;
-
-	if(random < growth)
-		return true;
-	return false;
+	float random = range_g * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) + min_g;
+	return random < growth ? true : false;
 }
 
 void copyMatrix(int processCurrentGeneration[], int processNextGeneration[], int size) {
-
 	for (int i = 0; i < size; i++)
 		processCurrentGeneration[i] = processNextGeneration[i];
 }
@@ -108,7 +105,6 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 			if(fuelGrowth()) {
 				processNextGeneration[i] = fuel(rand() % 3);
 				modified = true;
-
 			}
 		}
 		//Fuel cell (1. Struck by lighting. 2. One of its neighbourds burn and i am in the same wind direction
@@ -155,12 +151,11 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 			}
 		}
 		else {
-			if(processCurrentGeneration[i] < burn[2]) {
+			if(processCurrentGeneration[i] < burn[2])
 				processNextGeneration[i] = processCurrentGeneration[i] + burn[0];
-			}
-			else{
+
+			else
 				processNextGeneration[i] = -1;
-			}
 		}
 
 		if(modified)
@@ -172,7 +167,7 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 			changedValues.push_back(changed);
 
 
-			if(modified && curr_row == 0)
+			if(curr_row == 0)
 			{
 				modifiedValueOfNeighbourdProcess changed;
 				changed.position = curr_col;
@@ -180,7 +175,7 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 				leftProcessValueChangedToSend.push_back(changed);
 			}
 
-			if(modified && curr_row == (width/numberOfProcess) - 1)
+			if(curr_row == (width/numberOfProcess) - 1)
 			{
 				modifiedValueOfNeighbourdProcess changed;
 				changed.position = curr_col;
@@ -192,18 +187,14 @@ void transitionFunction(int processCurrentGeneration[],int processNextGeneration
 
 
 	for(int i = 0; i < height; i++) {
-		if(neighbourdDataOfLeftProcess[i] >= burn[0] && neighbourdDataOfLeftProcess[i] < burn[2]) {
+		if(neighbourdDataOfLeftProcess[i] >= burn[0] && neighbourdDataOfLeftProcess[i] < burn[2])
 			neighbourdDataOfLeftProcess[i] += burn[0];
-		}
-		else{
+		else
 			neighbourdDataOfLeftProcess[i] = -1;
-		}
-		if(neighbourdDataOfRightProcess[i] >= burn[0] && neighbourdDataOfRightProcess[i] < burn[2]) {
+		if(neighbourdDataOfRightProcess[i] >= burn[0] && neighbourdDataOfRightProcess[i] < burn[2])
 			neighbourdDataOfRightProcess[i] += burn[0];
-		}
-		else{
+		else
 			neighbourdDataOfRightProcess[i] = -1;
-		}
 	}
 }
 
@@ -224,29 +215,36 @@ void changeWindDirection() {
 
 int main(int argc, char** argv) {
 
-
-	al_init();
-	al_install_keyboard();
-
 	ALLEGRO_EVENT_QUEUE* queue;
 	ALLEGRO_DISPLAY* disp;
 	ALLEGRO_EVENT event;
 	ALLEGRO_COLOR color;
 
-
-
-	for(int i = 0; i < width; i++)
-		for(int j = 0; j < height; j++)
-			currentGeneration[i][j] = -1;
+	if(enableGraphic) {
+		al_init();
+		al_install_keyboard();
+	}
 
 	int numberOfProcess, myRank;
 
 	MPI_Init(&argc, &argv);
+	float start = MPI_Wtime();
 
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
+	if(numberOfProcess % 2 == 0){
+		cout<<"You have to specify an odd number of Process" << endl;
+		MPI_Finalize();
+		return 0;
+	}
+
 	srand(time(NULL) + myRank);
+
+	bool iAmTheMaster = false;
+	if(myRank == 0) {
+		iAmTheMaster = true;
+	}
 
 	const int BLOCKROWS = (width/(numberOfProcess - 1));                              /* number of rows in _block_ */
 	const int BLOCKCOLS = height;                             /* number of cols in _block_ */
@@ -255,16 +253,41 @@ int main(int argc, char** argv) {
 	int neighbourdDataOfRightProcess[BLOCKCOLS];
 	int neighbourdDataOfLeftProcess[BLOCKCOLS];
 
-	if(myRank == 0) {
-		queue = al_create_event_queue();
-		disp = al_create_display(width*cellSize, height*cellSize);
+	if(iAmTheMaster) {
 
-		al_register_event_source(queue, al_get_keyboard_event_source());
-		al_register_event_source(queue, al_get_display_event_source(disp));
-		al_init_primitives_addon();
+		for(int i = 0; i < width; i++)
+			for(int j = 0; j < height; j++)
+				currentGeneration[i][j] = -1;
+		if(enableGraphic) {
+			colorToDisplay =  {
+				{-1,    al_map_rgb(0, 0, 0)},
+				{0,     al_map_rgb(0,102, 0)},
+				{1,     al_map_rgb(0, 153, 0)},
+				{2,     al_map_rgb(0, 255, 0)},
+				{20,    al_map_rgb(255, 235, 0)},
+				{40,    al_map_rgb(255, 215, 0)},
+				{60,    al_map_rgb(255, 195, 0)},
+				{80,    al_map_rgb(255, 175, 0)},
+				{100, al_map_rgb(255, 155, 0)},
+				{120, al_map_rgb(255, 135, 0)},
+				{140, al_map_rgb(255, 115, 0)},
+				{160, al_map_rgb(255, 95, 0)},
+				{180, al_map_rgb(255, 75, 0)},
+				{200, al_map_rgb(255, 55, 0)},
+				{220, al_map_rgb(255, 35, 0)},
+				{240, al_map_rgb(255, 15, 0)}
+			};
+
+			queue = al_create_event_queue();
+			disp = al_create_display(width*cellSize, height*cellSize);
+
+			al_register_event_source(queue, al_get_keyboard_event_source());
+			al_register_event_source(queue, al_get_display_event_source(disp));
+			al_init_primitives_addon();
+		}
 	}
 
-	if(myRank!=0) {
+	else {
 		for(int i = 0; i < BLOCKROWS*BLOCKCOLS; i++) {
 			processNextGeneration[i] = -1;
 			processCurrentGeneration[i] = -1;
@@ -292,38 +315,37 @@ int main(int argc, char** argv) {
 	MPI_Type_commit(&cellOfNeighbourdProcess);
 
 	MPI_Status status;
+	MPI_Request request;
 	MPI_Comm linearArrayTopology;
-	bool iAmTheMaster = false;
-	if(myRank == 0) {
-		iAmTheMaster = true;
-	}
+
 
 	MPI_Comm comm;
 	MPI_Group origin_group, new_group;
 	MPI_Comm_group(MPI_COMM_WORLD, &origin_group);
 
-	int ex[1];
-	ex[0] = 0;
+	int ex[1] = {0};
 	MPI_Group_excl(origin_group, 1, ex, &new_group);
 	MPI_Comm_create(MPI_COMM_WORLD, new_group, &comm);
+
 	if(!iAmTheMaster) {
 		MPI_Comm_rank(comm, &myRank);
 		MPI_Comm_size(comm, &numberOfProcess);
 	}
+
 	int dimensions = 2, left, right, reorder = false;
 	int periods[dimensions], topologyDimensions[dimensions], coords[dimensions];
 
 	topologyDimensions[0] = numberOfProcess;
 	topologyDimensions[1] = 1;
 	periods[0] = 1, periods[1] = 0;
+
 	if(!iAmTheMaster) {
 		MPI_Cart_create(comm, dimensions, topologyDimensions, periods, reorder, &linearArrayTopology);
 		MPI_Cart_shift(linearArrayTopology, 0, 1, &left, &right);
 		MPI_Cart_coords(linearArrayTopology, myRank, dimensions, coords);
 	}
 
-
-	while(currentIteration < 5000)
+	while(currentIteration < 1000)
 	{
 		vector<modifiedCellOfCurrentGeneration> changedValues;
 		vector<modifiedValueOfNeighbourdProcess> leftProcessValueChangedToSend;
@@ -333,49 +355,44 @@ int main(int argc, char** argv) {
 			transitionFunction(processCurrentGeneration, processNextGeneration, neighbourdDataOfRightProcess,
 			                   neighbourdDataOfLeftProcess, BLOCKROWS*BLOCKCOLS, myRank, numberOfProcess, changedValues,
 			                   leftProcessValueChangedToSend, rightProcessValueChangedToSend );
-			copyMatrix(processCurrentGeneration, processNextGeneration, BLOCKROWS*BLOCKCOLS);
 
+			MPI_Isend(&changedValues[0], changedValues.size(), cellOfCurrentGeneration, 0, 99, MPI_COMM_WORLD, &request);
+
+			copyMatrix(processCurrentGeneration, processNextGeneration, BLOCKROWS*BLOCKCOLS);
 			/***********************/
 			int dimleft = leftProcessValueChangedToSend.size();
-			int dimright = 0;
+			int dimright = rightProcessValueChangedToSend.size();
 
 			MPI_Send(&leftProcessValueChangedToSend[0], dimleft, cellOfNeighbourdProcess, left, 95, linearArrayTopology);
+			MPI_Send(&rightProcessValueChangedToSend[0], dimright, cellOfNeighbourdProcess, right, 91, linearArrayTopology);
 
 			MPI_Probe(right, 95, linearArrayTopology, &status);
 			MPI_Get_count(&status, MPI_INT, &dimright);
-			
 			modifiedValueOfNeighbourdProcess mod_r[dimright / 2];
+			MPI_Recv(&mod_r, dimright / 2, cellOfNeighbourdProcess, right, 95, linearArrayTopology, MPI_STATUS_IGNORE);
 
-			MPI_Recv(&mod_r, dimright / 2, cellOfNeighbourdProcess, right, 95, linearArrayTopology, &status);
-
-			for(int j = 0; j < dimright / 2; j++) {
+			for(int j = 0; j < dimright / 2; j++)
 				neighbourdDataOfRightProcess[mod_r[j].position] = mod_r[j].newValue;
-			}
-
-
-			dimright = rightProcessValueChangedToSend.size();
-			MPI_Send(&rightProcessValueChangedToSend[0], dimright, cellOfNeighbourdProcess, right, 91, linearArrayTopology);
 
 			MPI_Probe(left, 91, linearArrayTopology, &status);
 			MPI_Get_count(&status, MPI_INT, &dimleft);
-
-			modifiedValueOfNeighbourdProcess mod_l[dimleft / 2];
+			modifiedValueOfNeighbourdProcess mod_l[dimleft / sizeof(modifiedValueOfNeighbourdProcess)];
 			MPI_Recv(&mod_l, dimleft / 2, cellOfNeighbourdProcess, left, 91, linearArrayTopology, MPI_STATUS_IGNORE);
 
-			for(int j = 0; j < dimleft / 2; j++) {
+			for(int j = 0; j < dimleft / 2; j++)
 				neighbourdDataOfLeftProcess[mod_l[j].position] = mod_l[j].newValue;
-			}
 
-		}
+			MPI_Wait(&request, &status);
 
-
-		int dim = changedValues.size();
-		if(!iAmTheMaster) {
-			MPI_Send(&changedValues[0], dim, cellOfCurrentGeneration, 0, 99, MPI_COMM_WORLD);
+			if(currentIteration % 50 == 0)
+				MPI_Recv(&indexDirectionWind, 1, MPI_INT, 0, 11,MPI_COMM_WORLD, &status);
 		}
 
 		if(iAmTheMaster) {
-			//	int dim;
+			int dim;
+			if(enableGraphic)
+				al_peek_next_event(queue, &event);
+
 			for(int i = 1; i < numberOfProcess; i++) {
 				MPI_Probe(i, 99, MPI_COMM_WORLD, &status);
 				MPI_Get_count(&status, MPI_INT, &dim);
@@ -387,58 +404,46 @@ int main(int argc, char** argv) {
 					currentGeneration[mod[j].row][mod[j].column] = mod[j].newValue;
 				}
 			}
-			al_peek_next_event(queue, &event);
+			if(enableGraphic) {
+				if((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE))
+					MPI_Abort(linearArrayTopology, 1);
 
-			if((event.type == ALLEGRO_EVENT_KEY_DOWN) || (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE)) {
-				MPI_Abort(linearArrayTopology, 1);
+				al_clear_to_color(al_map_rgb(0, 0, 0));
 			}
-
-			al_clear_to_color(al_map_rgb(0, 0, 0));
-
-
 			for(int i = 0; i < width; i++) {
 				for(int j = 0; j < height; j++) {
-					if(currentGeneration[i][j] == -1)
-						color = al_map_rgb(0, 0, 0);
-					else if(currentGeneration[i][j] >= burn[0]) {
-						color = al_map_rgb(255, 255 - currentGeneration[i][j], 0);
-
-						if(currentGeneration[i][j] < burn[2])
-							currentGeneration[i][j] += burn[0];
-						else
-							currentGeneration[i][j] = -1;
+					if(enableGraphic) {
+						al_draw_filled_rectangle(i*cellSize, j*cellSize, i*cellSize + cellSize, j*cellSize + cellSize,
+						                         colorToDisplay.at(currentGeneration[i][j]));
 					}
-					else if(currentGeneration[i][j] == fuel(0))
-						color = al_map_rgb(0,102, 0);
-					else if(currentGeneration[i][j] == fuel(1))
-						color = al_map_rgb(0, 153, 0);
-					else if(currentGeneration[i][j] == fuel(2))
-						color = al_map_rgb(0, 255, 0);
-
-					al_draw_filled_rectangle(i*cellSize, j*cellSize, i*cellSize + cellSize, j*cellSize + cellSize, color);
+					if(currentGeneration[i][j] < burn[2] && currentGeneration[i][j] >= burn[0])
+						currentGeneration[i][j] += burn[0];
+					if(currentGeneration[i][j] == burn[2])
+						currentGeneration[i][j] = -1;
 				}
 			}
-			al_flip_display();
+			if(enableGraphic)
+				al_flip_display();
+
+			if(currentIteration % 50 == 0) {
+				changeWindDirection();
+				for(int i = 1; i < numberOfProcess; i++)
+					MPI_Send(&indexDirectionWind, 1, MPI_INT, i, 11, MPI_COMM_WORLD);
+			}
 		}
-		//	if(currentIteration % 50 == 0)
-		//	changeWindDirection();
-		//MPI_Barrier(linearArrayTopology);
-
 		currentIteration++;
-
-
 	}
 
-	if(iAmTheMaster) {
+	if(iAmTheMaster && enableGraphic) {
 		al_destroy_display(disp);
 		al_destroy_event_queue(queue);
 	}
 
-
 	MPI_Type_free(&cellOfCurrentGeneration);
 	MPI_Type_free(&cellOfNeighbourdProcess);
 
+	float end = MPI_Wtime();
+	cout << " Total Time: " << end - start << endl;
 	MPI_Finalize();
-
 	return 0;
 }
