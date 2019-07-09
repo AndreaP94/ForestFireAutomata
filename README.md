@@ -10,7 +10,7 @@ Sequential Time  | Parallel Time | Speed Up  | Efficency | Number of Processors 
 4,09 s  | 2,3867 s | 1,7136 | 0,5712 | 3 | S_R_All_Changed_Data     
 4,09 s  | 1,63184 s | 2,5063 | 0,5012 | 5 | S_R_All_Data
 4,09 s  | 2,1818 s | 1,8746 | 0,3749 | 5 | S_R_All_Data_Fixed_Struct_Size  
-4,09 s  | 1,8528 s | 2,2075 | 0,4414 | S_R_All_Changed_Data     
+4,09 s  | 1,8528 s | 2,2075 | 0,4414 | 5 | S_R_All_Changed_Data     
 4,09 s  | 1,19141 s |  3,4329 | 0,4904 | 7 | S_R_All_Data
 4,09 s  | 1,5257 s |  2,6807 | 0,383 | 7 | S_R_All_Data_Fixed_Struct_Size  
 4,09 s  | 1,2814 s |  3,1918 | 0,456 | 7 | S_R_All_Changed_Data     
