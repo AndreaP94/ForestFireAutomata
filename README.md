@@ -52,4 +52,17 @@ Sequential Time  | Parallel Time | Speed Up  | Efficency | Number of Processors 
 242,061 s  | 148,762 s |  s | s | 5 | S_R_All_Changed_Data    
 242,061 s  | Not Executable |  - | - | 7 | S_R_All_Data
 242,061 s  | Not Executable |  - | - | 7 | S_R_All_Data_Fixed_Struct_Size    
-242,061 s  | 138,63 s |  s | s | 7 | S_R_All_Changed_Data    
+242,061 s  | 138,63 s |  s | s | 7 | S_R_All_Changed_Data  
+
+
+##Conclusions
+
+We note that none of the obtained results give us a slowdown, in any case we obtain a parallelization of the problem.
+In particular we can conclude that for a little problem size (160x160) or (320x320) there are no substantial differences on use one of the parallel method w.r.t another one. We note that only the second method (Send and Receive of Array of struct equal to BLOCKCOLS or BLOCKROWS*BLOCKCOLS) is always behind the other two.
+
+For problem whose size increase (640x640) we note that the second method is not executable, this beacuse the amount of data to Send and Receive at each iteration for each process is very huge (For instance, suppose a matrix (640x640), and the program run with 3 process, the master process receive at each iteration (640*320)*sizeof(struct) data for each process, and each process send the same amount of data to the master, and send (640)*sizeof(struct) data to each of its neighbourd.
+
+While for problem whose size increase (1280x1280) we note that our idea of send and receive only the data that at each iteration dinamically change is useful, giving us the opportunity of parallelize the programme. In fact the other two method are not executable, always for the problem of the amount of data Send and Received.
+
+We can conclude that in general for little problem size the first or the third method must to be used. (The second one is never the best), while for bigger forest size the third method is the only one usable for the parallelization.
+
