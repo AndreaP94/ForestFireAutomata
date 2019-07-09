@@ -55,7 +55,7 @@ Sequential Time  | Parallel Time | Speed Up  | Efficency | Number of Processors 
 242,061 s  | 138,63 s |  s | s | 7 | S_R_All_Changed_Data  
 
 
-##Conclusions
+## Conclusions
 
 We note that none of the obtained results give us a slowdown, in any case we obtain a parallelization of the problem.
 In particular we can conclude that for a little problem size (160x160) or (320x320) there are no substantial differences on use one of the parallel method w.r.t another one. We note that only the second method (Send and Receive of Array of struct equal to BLOCKCOLS or BLOCKROWS*BLOCKCOLS) is always behind the other two.
