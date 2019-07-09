@@ -17,7 +17,20 @@ The neighbors of a cell are exactly three, and are determined according to the w
  
 Trees catch fire if at least one of their neighbors are on fire, and also if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
 
-    
+
+## Implementation
+There are provided both sequential and parallel implementation of the Cellular Automata, and both of them was developed by using the **C++** programming language and the library **Allegro** (https://liballeg.org/) for the visual rendering. In addition, for the parallel implementation it was used the **MPI** library (Message Passing Interface) (https://www.open-mpi.org/) for the communication between process.
+
+There was developed three different versions, in each of which the data was decomposed in a row-fashion way, in order to assign at each process an equal portion of the data.
+
+<img src="https://i.imgur.com/HoaX8Jt.png" width="350" >
+
+The three versions of the parallel implementation differs each other in the way them deals (send/receive) the data. In particular:
+ * **Send & Receive All Data:** send and receive all the data, either if it was changed or if isn't.
+ * **Send & Receive All Data Fixed Size:** send/receive all the data to/from neighbords processes (first row to the process on the left and last row to the process on the right). So, the at each iteration it was sended/received an amount of data equals to BLOCKCOLS.
+ * **Send & Receive Only Changed Data:** send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
+
+
 ## Results
 
 ### Problem Size: 160x160
