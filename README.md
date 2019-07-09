@@ -1,5 +1,23 @@
 # ForestFireAutomata
-                   
+    
+## Overview
+This implementation of the Forest Cellular Automata is a variation of forest fire propagation as described in [Drossel&Schwabl92].
+Instead of a single kind of tree (calling Combustible), there was used three different kind of coumbustibles:
+
+ * Light green tree: burn very quickly.
+ * Green tree: burn normally.
+ * Dark green tree: burn very slow.
+
+Moreover, that was introduced the concept of the **wind** for determine the neighbors of a specific cell.
+Initially it takes one of the values of the **wind rose** (NW, N, NE, E, SE, S, SW, W) and later, during the whole execution, every 50 loop iteration it takes randomly one of the two neighbors of the current direction wind. For instance, if the current direction of the wind is E, the next direction can be either NE or SE.
+
+The neighbors of a cell are exactly three, and are determined according to the wind direction. For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
+
+ <img src="https://i.imgur.com/dg36fZd.png" width="350" >
+ 
+Trees catch fire if at least one of their neighbors are on fire, and also if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
+
+    
 ## Results
 
 ### Problem Size: 160x160
