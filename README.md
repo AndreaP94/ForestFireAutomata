@@ -13,9 +13,9 @@ Initially it takes one of the values of the **wind rose** (NW, N, NE, E, SE, S, 
 
 The neighbors of a cell are exactly three, and are determined according to the wind direction. For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
 
- <img src="https://i.imgur.com/dg36fZd.png" width="350" >
+ <img src="https://i.imgur.com/Piubp7P.png" width="350" >
  
-Trees catch fire if at least one of their neighbors are on fire, and also if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
+Trees catch fire if at least one of their neighbors are on fire or if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
 
 
 ## Implementation
@@ -23,7 +23,7 @@ There are provided both sequential and parallel implementation of the Cellular A
 
 There was developed three different versions, in each of which the data was decomposed in a row-fashion way, in order to assign at each process an equal portion of the data.
 
-<img src="https://i.imgur.com/HoaX8Jt.png" width="350" >
+<img src="https://i.imgur.com/HoaX8Jt.png" width="450" >
 
 The three versions of the parallel implementation differs each other in the way them deals (send/receive) the data. In particular:
  * **Send & Receive All Data:** send and receive all the data, either if it was changed or if isn't.
@@ -87,7 +87,6 @@ Sequential Time  | Parallel Time | Speed Up  | Efficency | Number of Processors 
 
 
 ## Conclusions
-
 We note that none of the obtained results give us a slowdown, in any case we obtain a parallelization of the problem.
 In particular we can conclude that for a little problem size (160x160) or (320x320) there are no substantial differences on use one of the parallel method w.r.t another one. We note that only the second method (Send and Receive of Array of struct equal to BLOCKCOLS or BLOCKROWS*BLOCKCOLS) is always behind the other two.
 
@@ -97,3 +96,6 @@ While for problem whose size increase (1280x1280) we note that our idea of send 
 
 We can conclude that in general for little problem size the first or the third method must to be used. (The second one is never the best), while for bigger forest size the third method is the only one usable for the parallelization.
 
+
+## Bibliography
+[Drossel&Schwabl92] B. Drossel and F. Schwabl, “Self-organized critical forest-fire model”, Physical Review Letters, Vol. 69, No. 11, September 1992, pp. 1629–1632.
