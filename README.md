@@ -13,7 +13,7 @@ Initially it takes one of the values of the **wind rose** (NW, N, NE, E, SE, S, 
 
 The neighbors of a cell are exactly three, and are determined according to the wind direction. For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
 
- <img src="https://i.imgur.com/Piubp7P.png" width="350" >
+ <img src="https://i.imgur.com/Piubp7P.png" width="500" >
  
 Trees catch fire if at least one of their neighbors are on fire or if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
 
