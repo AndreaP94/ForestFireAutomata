@@ -28,10 +28,9 @@ There was developed three different versions, in each of which the data was deco
 <img src="https://i.imgur.com/HoaX8Jt.png" width="450" >
 
 The three versions of the parallel implementation differs each other in the way them deals (send/receive) the data. In particular:
- * **Send & Receive All Data:** send and receive all the data, either if it was changed or if isn't.
- * **Send & Receive All Data Fixed Size:** send/receive all the data to/from neighbords processes (first row to the process on the left and last row to the process on the right). So, the at each iteration it was sended/received an amount of data equals to BLOCKCOLS.
- * **Send & Receive Only Changed Data ** 
-([S_R_All_Changed_Data](https://github.com/AndreaP94/ForestFireAutomata/blob/master/forest_Fire_S_R_AllChangedData.cpp)): send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
+ * **Send & Receive All Data ([S_R_All_Data](forest_Fire_S_R_AllData.cpp)):** send and receive all the data, either if it was changed or if isn't.
+ * **Send & Receive All Data Fixed Size ([S_R_All_Data_Fixed_Struct_Size](forest_Fire_S_R_AllChangedData_FixedSizeStruct.cpp)):** send/receive all the data to/from neighbords processes (first row to the process on the left and last row to the process on the right). So, the at each iteration it was sended/received an amount of data equals to BLOCKCOLS.
+ * **Send & Receive Only Changed Data  ([S_R_All_Changed_Data](forest_Fire_S_R_AllChangedData.cpp)):** send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
 
 
 ## Results
