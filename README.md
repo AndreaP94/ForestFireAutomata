@@ -4,18 +4,20 @@
 This implementation of the Forest Cellular Automata is a variation of forest fire propagation as described in [Drossel&Schwabl92].
 Instead of a single kind of tree (calling Combustible), there was used three different kind of coumbustibles:
 
- * Light green tree: burn very quickly.
- * Green tree: burn normally.
- * Dark green tree: burn very slow.
+ * **Light green tree:** burn very quickly.
+ * **Green tree:** burn normally.
+ * **Dark green tree:** burn very slow.
 
 Moreover, that was introduced the concept of the **wind** for determine the neighbors of a specific cell.
-Initially it takes one of the values of the **wind rose** (NW, N, NE, E, SE, S, SW, W) and later, during the whole execution, every 50 loop iteration it takes randomly one of the two neighbors of the current direction wind. For instance, if the current direction of the wind is E, the next direction can be either NE or SE.
+Initially it takes one of the values of the **wind rose** (NW, N, NE, E, SE, S, SW, W) and later, during the whole execution, every 50 loop iteration it takes randomly one of the two neighbors of the current direction wind. 
+For instance, if the current direction of the wind is E, the next direction can be either NE or SE.
 
-The neighbors of a cell are exactly three, and are determined according to the wind direction. For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
+The neighbors of a cell are exactly three, and are determined according to the wind direction. 
+For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
 
  <img src="https://i.imgur.com/Piubp7P.png" width="500" >
  
-Trees catch fire if at least one of their neighbors are on fire or if struck by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
+Trees catch fire if at least one of their neighbors are on fire or if it is strucked by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
 
 
 ## Implementation
@@ -28,7 +30,8 @@ There was developed three different versions, in each of which the data was deco
 The three versions of the parallel implementation differs each other in the way them deals (send/receive) the data. In particular:
  * **Send & Receive All Data:** send and receive all the data, either if it was changed or if isn't.
  * **Send & Receive All Data Fixed Size:** send/receive all the data to/from neighbords processes (first row to the process on the left and last row to the process on the right). So, the at each iteration it was sended/received an amount of data equals to BLOCKCOLS.
- * **Send & Receive Only Changed Data:** send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
+ * **Send & Receive Only Changed Data ** 
+([S_R_All_Changed_Data](https://github.com/AndreaP94/ForestFireAutomata/blob/master/forest_Fire_S_R_AllChangedData.cpp)): send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
 
 
 ## Results
