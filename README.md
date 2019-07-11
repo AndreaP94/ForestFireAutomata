@@ -31,7 +31,20 @@ The three versions of the parallel implementation differs each other in the way 
  * **Send & Receive All Data ([S_R_All_Data](forest_Fire_S_R_AllData.cpp)):** send and receive all the data, either if it was changed or if isn't.
  * **Send & Receive All Data Fixed Size ([S_R_All_Data_Fixed_Struct_Size](forest_Fire_S_R_AllChangedData_FixedSizeStruct.cpp)):** send/receive all the data to/from neighbords processes (first row to the process on the left and last row to the process on the right). So, the at each iteration it was sended/received an amount of data equals to BLOCKCOLS.
  * **Send & Receive Only Changed Data  ([S_R_All_Changed_Data](forest_Fire_S_R_AllChangedData.cpp)):** send/receive to/from neighbords processes only the data that was effectively changed. So, the size of the data sended/receive is dinamically determined.
+ 
+In each of the above version the processes works according to a Master/Slave architecture, by using two different communicator.
+In particular:
+* **Master process**: It has to communicate with each workers in order to retrieve the data (thanks to the messagge passing paradigm) and update the current generation and render it (Is the only process enabled to render).
+* **Slave Process**: They are distributed according to a cartesian topology (Linear) of dimensions **Nproc (-1) * 1** toroidal along the first dimension. In this topology the master is not included. This choice was done beacuse according to the Task Dependency Graph we can see that each process, in order to compute his portion of data (Row Division described above) need some data from both left and right process.
 
+For instance if one of the implementation is executed with 5 process we have the following Task Dependency Graphs:
+**First One:**
+
+<img src="https://i.imgur.com/1Yen2Ke.png" width="500" >
+
+**Second One:**
+
+<img src="https://i.imgur.com/HKSbSIE.png" width="500" >
 
 ## Results
 
