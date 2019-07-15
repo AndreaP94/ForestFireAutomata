@@ -15,8 +15,10 @@ For instance, if the current direction of the wind is E, the next direction can 
 The neighbors of a cell are exactly three, and are determined according to the wind direction. 
 For instance, how it is showed in the following image, if the wind direction is SE, the neighbords of a cell [i][j] are the cell:
 
- <img src="https://i.imgur.com/k4D1Zpa.png" width="500" >
- 
+<p align="center">
+    <img src="https://i.imgur.com/k4D1Zpa.png" width="500" >
+</p>
+                                                       
 Trees catch fire if at least one of their neighbors are on fire or if it is strucked by lightning with probability ***f*** (by default 0.00000002) each generation. According to the kind of combustible described above, burning trees become empty cells in the next generation. Empty cells have a probability ***p*** (default 0.002) to grow a coumbustible each generation.
 
 
@@ -25,7 +27,9 @@ There are provided both sequential and parallel implementation of the Cellular A
 
 There was developed three different versions, in each of which the data was decomposed in a row-fashion way, in order to assign at each process an equal portion of the data.
 
-<img src="https://i.imgur.com/HoaX8Jt.png" width="450" >
+<p align="center">
+    <img src="https://i.imgur.com/HoaX8Jt.png" width="450" >
+</p>
 
 The three versions of the parallel implementation differs each other in the way them deals (send/receive) the data. In particular:
  * **Send & Receive All Data ([S_R_All_Data](forest_Fire_S_R_AllData.cpp)):** send and receive all the data, either if it was changed or if isn't.
@@ -38,13 +42,17 @@ In particular:
 * **Slave Process**: They are distributed according to a cartesian topology (Linear) of dimensions **Nproc (-1) * 1** toroidal along the first dimension. In this topology the master is not included. This choice was done beacuse according to the Task Dependency Graph we can see that each process, in order to compute his portion of data (Row Division described above) need some data from both left and right process.
 
 For instance if one of the implementation is executed with 5 process we have the following Task Dependency Graphs:
-**First One:**
 
-<img src="https://i.imgur.com/1Yen2Ke.png" width="500" >
+**First One:**
+<p align="center">
+    <img src="https://i.imgur.com/1Yen2Ke.png" width="500" >
+</p>
 
 **Second One:**
+<p align="center">
+    <img src="https://i.imgur.com/HKSbSIE.png" width="500" >
+</p>
 
-<img src="https://i.imgur.com/HKSbSIE.png" width="500" >
 
 ## Results
 
